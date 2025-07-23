@@ -24,10 +24,10 @@ pipeline {
                 script {
                     // Use your updated credential ID here
                     withCredentials([string(credentialsId: 'azure client secret new', variable: 'ARM_CLIENT_SECRET')]) {
-                        bat """
-                        az login --service-principal -u %ARM_CLIENT_ID% -p %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
-                        """
-                    }
+    bat """
+    az login --service-principal -u %ARM_CLIENT_ID% -p %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
+    """
+}
                 }
             }
         }
