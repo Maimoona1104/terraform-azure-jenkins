@@ -2,14 +2,16 @@ pipeline {
     agent any
 
     parameters {
-        booleanParam(name: 'DESTROY_ENABLED', defaultValue: false, description: 'Enable Terraform destroy in staging')
-        string(name: 'ENVIRONMENT', defaultValue: 'staging', description: 'Deployment environment')
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment environment')
+        booleanParam(name: 'DESTROY_ENABLED', defaultValue: false, description: 'Enable Terraform destroy')
     }
 
     environment {
-        ARM_CLIENT_ID = '77c9545d-ef6e-4418-8e09-6f7a1a692bd8'
-        ARM_TENANT_ID = '05a0f98e-063b-4bd9-b1c6-29e7cc58a8fc'
-        // ARM_CLIENT_SECRET will come from Jenkins credentials securely
+        // Store these sensitive values in Jenkins credentials
+        ARM_CLIENT_ID = credentials('azure-client-id')
+        ARM_TENANT_ID = credentials('azure-tenant-id')
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+        TF_IN_AUTOMATION = 'true'  // Important for Terraform in CI/CD
     }
 
     stages {
@@ -19,38 +21,60 @@ pipeline {
             }
         }
 
-        stage('Azure Login') {
+        stage('Terraform Init') {
             steps {
-                script {
-                    // Use your updated credential ID here
-                    withCredentials([string(credentialsId: 'azure client secret new', variable: 'ARM_CLIENT_SECRET')]) {
-    bat """
-    az login --service-principal -u %ARM_CLIENT_ID% -p %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
-    """
-}
+                withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
+                    bat """
+                    terraform init \\
+                        -backend-config="resource_group_name=Project003_RG" \\
+                        -backend-config="storage_account_name=project3tfg" \\
+                        -backend-config="container_name=pro-container" \\
+                        -backend-config="key=${params.ENVIRONMENT}.tfstate"
+                    """
                 }
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Validate') {
             steps {
-                bat 'terraform init -backend-config=${ENVIRONMENT}/backend.tfvars'
+                bat 'terraform validate'
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                bat 'terraform plan -var-file=${ENVIRONMENT}/terraform.tfvars'
+                bat "terraform plan -var-file=envs/${params.ENVIRONMENT}.tfvars"
             }
         }
 
-        stage('Terraform Apply or Destroy') {
+        stage('Approval Gate') {
+            when {
+                expression { 
+                    return params.ENVIRONMENT == 'production' || params.DESTROY_ENABLED 
+                }
+            }
             steps {
                 script {
-                    if (params.DESTROY_ENABLED) {
-                        bat 'terraform destroy -auto-approve -var-file=${ENVIRONMENT}/terraform.tfvars'
-                    } else {
-                        bat 'terraform apply -auto-approve -var-file=${ENVIRONMENT}/terraform.tfvars'
+                    def message = params.DESTROY_ENABLED ? 
+                        "Approve DESTROY of ${params.ENVIRONMENT} environment?" : 
+                        "Approve PRODUCTION deployment?"
+                    
+                    timeout(time: 5, unit: 'MINUTES') {
+                        input message: message
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply/Destroy') {
+            steps {
+                withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
+                    script {
+                        if (params.DESTROY_ENABLED) {
+                            bat "terraform destroy -auto-approve -var-file=envs/${params.ENVIRONMENT}.tfvars"
+                        } else {
+                            bat "terraform apply -auto-approve -var-file=envs/${params.ENVIRONMENT}.tfvars"
+                        }
                     }
                 }
             }
@@ -59,13 +83,21 @@ pipeline {
 
     post {
         always {
+            script {
+                if (currentBuild.result == 'SUCCESS' && !params.DESTROY_ENABLED) {
+                    def output = bat script: 'terraform output -json', returnStdout: true
+                    writeJSON file: 'terraform_output.json', json: output
+                    archiveArtifacts artifacts: 'terraform_output.json'
+                }
+            }
             cleanWs()
         }
         failure {
-            echo "Build failed on environment: ${params.ENVIRONMENT}"
+            echo "Pipeline failed for environment: ${params.ENVIRONMENT}"
+            // Consider adding notification here (Slack, email, etc.)
         }
         success {
-            echo "Build succeeded on environment: ${params.ENVIRONMENT}"
+            echo "Pipeline succeeded for environment: ${params.ENVIRONMENT}"
         }
     }
 }
