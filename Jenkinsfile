@@ -17,7 +17,7 @@ pipeline {
     stages {
         stage('Checkout SCM') {
             steps {
-                checkout scm
+                git credentialsId: 'git-hub', url: 'https://github.com/Maimoona1104/terraform-azure-jenkins.git'
             }
         }
 
