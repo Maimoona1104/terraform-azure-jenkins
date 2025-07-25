@@ -80,24 +80,5 @@ pipeline {
             }
         }
     }
-
-    post {
-        always {
-            script {
-                if (currentBuild.result == 'SUCCESS' && !params.DESTROY_ENABLED) {
-                    def output = bat script: 'terraform output -json', returnStdout: true
-                    writeJSON file: 'terraform_output.json', json: output
-                    archiveArtifacts artifacts: 'terraform_output.json'
-                }
-            }
-            cleanWs()
-        }
-        failure {
-            echo "Pipeline failed for environment: ${params.ENVIRONMENT}"
-            // Consider adding notification here (Slack, email, etc.)
-        }
-        success {
-            echo "Pipeline succeeded for environment: ${params.ENVIRONMENT}"
-        }
     }
 }
