@@ -46,8 +46,11 @@ pipeline {
                     REM echo "ARM_CLIENT_SECRET: %ARM_CLIENT_SECRET%"
                     
                     echo "Attempting az login with Service Principal..."
-                    # Explicitly log in using the Service Principal credentials
-                    az login --service-principal --username %ARM_CLIENT_ID% --password %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
+                    REM Explicitly log in using the Service Principal credentials
+                    az login --service-principal ^
+                        --username %ARM_CLIENT_ID% ^
+                        --password %ARM_CLIENT_SECRET% ^
+                        --tenant %ARM_TENANT_ID%
                     
                     echo "Attempting az account show to verify authentication context after login..."
                     az account show --output json
