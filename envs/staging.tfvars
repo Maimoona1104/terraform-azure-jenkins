@@ -15,5 +15,5 @@ admin_password = "StagingSecurePassword123!"
 tags = {
   Environment = "staging"
   Project     = "MyWebApp"
-  Owner       = "YourName"
+  Owner       = "Maimoona1"
 }
