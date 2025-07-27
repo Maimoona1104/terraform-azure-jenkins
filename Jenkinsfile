@@ -13,10 +13,10 @@ pipeline {
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
         TF_IN_AUTOMATION = 'true'  // Important for Terraform in CI/CD
     }
-    
+
+    stages { // This opens the stages block
         stage('Terraform Init') {
             steps {
-                // ARM_CLIENT_SECRET is handled here via withCredentials to expose it only during this block
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     bat """
                     terraform init \\
@@ -62,7 +62,6 @@ pipeline {
 
         stage('Terraform Apply/Destroy') {
             steps {
-                // ARM_CLIENT_SECRET is exposed again for apply/destroy
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     script {
                         if (params.DESTROY_ENABLED) {
@@ -74,5 +73,5 @@ pipeline {
                 }
             }
         }
-    }
-}
+    } // This closes the stages block
+} // This closes the pipeline block
