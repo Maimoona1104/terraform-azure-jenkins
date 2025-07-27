@@ -43,12 +43,13 @@ pipeline {
                     echo "ARM_CLIENT_ID: %ARM_CLIENT_ID%"
                     echo "ARM_TENANT_ID: %ARM_TENANT_ID%"
                     echo "ARM_SUBSCRIPTION_ID: %ARM_SUBSCRIPTION_ID%"
-                    REM echo "ARM_CLIENT_SECRET: %ARM_CLIENT_SECRET%"  <-- This line is commented out to prevent secret exposure in logs.
+                    REM echo "ARM_CLIENT_SECRET: %ARM_CLIENT_SECRET%"
                     
-                    echo "Attempting az account show to verify authentication context..."
-                    # The following command uses the environment variables directly
-                    # to try and show the currently logged-in Azure account.
-                    # If this fails, it indicates an issue with the Service Principal credentials or permissions.
+                    echo "Attempting az login with Service Principal..."
+                    # Explicitly log in using the Service Principal credentials
+                    az login --service-principal --username %ARM_CLIENT_ID% --password %ARM_CLIENT_SECRET% --tenant %ARM_TENANT_ID%
+                    
+                    echo "Attempting az account show to verify authentication context after login..."
                     az account show --output json
                     
                     echo "Running terraform plan..."
