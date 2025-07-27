@@ -13,16 +13,7 @@ pipeline {
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
         TF_IN_AUTOMATION = 'true'  // Important for Terraform in CI/CD
     }
-
-    stages {
-        stage('Checkout SCM') {
-            steps {
-                // Ensure your 'git-hub' credential is a Username with Password type
-                // where Username is your GitHub username and Password is your PAT.
-                git credentialsId: 'git-hub', url: 'https://github.com/Maimoona1104/terraform-azure-jenkins.git'
-            }
-        }
-
+    
         stage('Terraform Init') {
             steps {
                 // ARM_CLIENT_SECRET is handled here via withCredentials to expose it only during this block
