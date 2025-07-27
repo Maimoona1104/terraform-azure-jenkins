@@ -37,7 +37,24 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                bat "terraform plan -var-file=envs/${params.ENVIRONMENT}.tfvars"
+                withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
+                    bat """
+                    echo "--- Debugging Azure Credentials ---"
+                    echo "ARM_CLIENT_ID: %ARM_CLIENT_ID%"
+                    echo "ARM_TENANT_ID: %ARM_TENANT_ID%"
+                    echo "ARM_SUBSCRIPTION_ID: %ARM_SUBSCRIPTION_ID%"
+                    REM echo "ARM_CLIENT_SECRET: %ARM_CLIENT_SECRET%"  <-- This line is commented out to prevent secret exposure in logs.
+                    
+                    echo "Attempting az account show to verify authentication context..."
+                    # The following command uses the environment variables directly
+                    # to try and show the currently logged-in Azure account.
+                    # If this fails, it indicates an issue with the Service Principal credentials or permissions.
+                    az account show --output json
+                    
+                    echo "Running terraform plan..."
+                    terraform plan -var-file=envs/${params.ENVIRONMENT}.tfvars
+                    """
+                }
             }
         }
 
