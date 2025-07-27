@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        // Store these sensitive values in Jenkins credentials
+        // These sensitive values are retrieved from Jenkins credentials
         ARM_CLIENT_ID = credentials('azure-client-id')
         ARM_TENANT_ID = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
@@ -17,18 +17,21 @@ pipeline {
     stages {
         stage('Checkout SCM') {
             steps {
+                // Ensure your 'git-hub' credential is a Username with Password type
+                // where Username is your GitHub username and Password is your PAT.
                 git credentialsId: 'git-hub', url: 'https://github.com/Maimoona1104/terraform-azure-jenkins.git'
             }
         }
 
         stage('Terraform Init') {
             steps {
+                // ARM_CLIENT_SECRET is handled here via withCredentials to expose it only during this block
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     bat """
                     terraform init \\
-                        -backend-config="resource_group_name=Project003_RG" \\
-                        -backend-config="storage_account_name=project3tfg" \\
-                        -backend-config="container_name=pro-container" \\
+                        -backend-config="resource_group_name=terraform-state-rg" \\
+                        -backend-config="storage_account_name=tfstatemoona" \\
+                        -backend-config="container_name=tfstate" \\
                         -backend-config="key=${params.ENVIRONMENT}.tfstate"
                     """
                 }
@@ -49,16 +52,16 @@ pipeline {
 
         stage('Approval Gate') {
             when {
-                expression { 
-                    return params.ENVIRONMENT == 'production' || params.DESTROY_ENABLED 
+                expression {
+                    return params.ENVIRONMENT == 'production' || params.DESTROY_ENABLED
                 }
             }
             steps {
                 script {
-                    def message = params.DESTROY_ENABLED ? 
-                        "Approve DESTROY of ${params.ENVIRONMENT} environment?" : 
+                    def message = params.DESTROY_ENABLED ?
+                        "Approve DESTROY of ${params.ENVIRONMENT} environment?" :
                         "Approve PRODUCTION deployment?"
-                    
+
                     timeout(time: 5, unit: 'MINUTES') {
                         input message: message
                     }
@@ -68,6 +71,7 @@ pipeline {
 
         stage('Terraform Apply/Destroy') {
             steps {
+                // ARM_CLIENT_SECRET is exposed again for apply/destroy
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     script {
                         if (params.DESTROY_ENABLED) {
@@ -80,4 +84,4 @@ pipeline {
             }
         }
     }
-    }
+}
