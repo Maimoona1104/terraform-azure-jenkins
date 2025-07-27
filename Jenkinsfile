@@ -19,7 +19,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     bat """
-                    terraform init ^
+                    terraform init -reconfigure ^
                         -backend-config="resource_group_name=terraform-state-rg" ^
                         -backend-config="storage_account_name=tfstatemoona" ^
                         -backend-config="container_name=tfstate" ^
