@@ -14,15 +14,15 @@ pipeline {
         TF_IN_AUTOMATION = 'true'  // Important for Terraform in CI/CD
     }
 
-    stages { // This opens the stages block
+    stages {
         stage('Terraform Init') {
             steps {
                 withCredentials([string(credentialsId: 'azure-client-secret', variable: 'ARM_CLIENT_SECRET')]) {
                     bat """
-                    terraform init \\
-                        -backend-config="resource_group_name=terraform-state-rg" \\
-                        -backend-config="storage_account_name=tfstatemoona" \\
-                        -backend-config="container_name=tfstate" \\
+                    terraform init ^
+                        -backend-config="resource_group_name=terraform-state-rg" ^
+                        -backend-config="storage_account_name=tfstatemoona" ^
+                        -backend-config="container_name=tfstate" ^
                         -backend-config="key=${params.ENVIRONMENT}.tfstate"
                     """
                 }
@@ -73,5 +73,5 @@ pipeline {
                 }
             }
         }
-    } // This closes the stages block
-} // This closes the pipeline block
+    }
+}
